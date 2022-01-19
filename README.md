@@ -3,4 +3,4 @@ This is just test code
 
 
 
-![](./example.png)
+<img src="./example.png" style="zoom: 30%;" />
