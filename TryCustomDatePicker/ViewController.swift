@@ -70,6 +70,7 @@ class ViewController: UIViewController {
         sysPickerView.isHidden = true
 
         myPickView = LTYearMonthPicker()
+        myPickView.minimumDate = Date.dateStringToDate("2019-07-13")
         view.addSubview(myPickView)
         myPickView.snp.makeConstraints { make in
             make.top.equalTo(pickView.snp.bottom).offset(30)

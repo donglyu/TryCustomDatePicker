@@ -18,6 +18,8 @@ class LTYearMonthPicker: UIView {
     private var years: [Int] = []
     private var months: [Int] = []
 
+    private var nowDateComonents: DateComponents!
+
     public var date: Date = Date()
     public var minimumDate: Date?
 
@@ -25,7 +27,10 @@ class LTYearMonthPicker: UIView {
         super.init(frame: frame)
         backgroundColor = .white
         setupViews()
-        setupDateData(date: date)
+        nowDateComonents = NSCalendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: Date())
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { [weak self] in
+            self?.setupDateData(date: self!.date)
+        }
     }
 
     private func setupViews() {
@@ -67,23 +72,66 @@ class LTYearMonthPicker: UIView {
 
     private func setupDateData(date: Date) {
         self.date = date
+        
+        // --- prepare.
         let calendar = NSCalendar.current
-        let compt = calendar.dateComponents([.year, .month, .day], from: date)
-        guard let currentYear = compt.year, let currentMonth = compt.month else {
+        let compt = calendar.dateComponents([.year, .month, .day], from: Date())
+        guard let currentYear = compt.year else {
+            return
+        }
+        
+        let selectCompt = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let selectYear = selectCompt.year, let selectMonth = selectCompt.month else {
             return
         }
 
-        for year in 1 ... currentYear {
-            years.append(year)
-        }
-        for month in 1 ... 12 {
-            months.append(month)
+        // find star year.
+        var yearStart = 1
+        if let miniDate = minimumDate {
+            let compt = calendar.dateComponents([.year, .month, .day], from: miniDate)
+            yearStart = compt.year!
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0) { [weak self] in
-            self?.pickView.selectRow(currentMonth - 1, inComponent: self?.monthComponent ?? 1, animated: true)
-            self?.pickView.selectRow(currentYear - 1, inComponent: self?.yearComponent ?? 0, animated: true)
+        years.removeAll()
+        for year in yearStart ... currentYear {
+            years.append(year)
         }
+
+        pickView.reloadAllComponents()
+
+        let rowIndexForYear = years.firstIndex(of: selectYear) ?? years.count - 1
+        let rowIndexForMonth = months.firstIndex(of: selectMonth) ?? months.count - 1
+
+        resetMonthsDataByYearRow(row: rowIndexForYear)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.pickView.selectRow(rowIndexForMonth, inComponent: self?.monthComponent ?? 1, animated: true)
+            self?.pickView.selectRow(rowIndexForYear, inComponent: self?.yearComponent ?? 0, animated: true)
+        }
+    }
+
+    private func resetMonthsDataByYearRow(row: Int) {
+        // 更新月份(根据最小时间的年月）可选择月份s
+        var minMonth = 1
+        var maxMonth = 12
+        if let mini = minimumDate {
+            let compt = NSCalendar.current.dateComponents([.year, .month, .day], from: mini)
+            if compt.year == years[row] { // update months
+                minMonth = compt.month!
+            }
+        }
+
+        if years[row] == nowDateComonents.year {
+            maxMonth = nowDateComonents.month!
+        }
+
+        print("now can select month: \(minMonth), max month: \(maxMonth)")
+
+        months.removeAll()
+        for month in minMonth ... maxMonth {
+            months.append(month)
+        }
+        pickView.reloadComponent(monthComponent)
     }
 
     required init?(coder: NSCoder) {
@@ -135,16 +183,18 @@ extension LTYearMonthPicker: UIPickerViewDataSource, UIPickerViewDelegate {
 
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         print("print component:\(component) row:\(row)")
+
         if component == yearComponent {
-            // 更新月份(根据最小时间的年月）可选择月份s
+            resetMonthsDataByYearRow(row: row)
         }
+
         // now Date
         var datecomp = NSCalendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
         datecomp.year = years[pickerView.selectedRow(inComponent: yearComponent)]
-        datecomp.month = months[pickerView.selectedRow(inComponent: monthComponent)]
+        let monthIndex = pickerView.selectedRow(inComponent: monthComponent)
+
+        datecomp.month = months[monthIndex > months.count - 1 ? 0 : monthIndex]
         date = Calendar.current.date(from: datecomp as DateComponents) ?? Date()
-        if let mini = minimumDate, date.compare(mini) == .orderedAscending {
-            setupDateData(date: mini)
-        }
+        setupDateData(date: date)
     }
 }
