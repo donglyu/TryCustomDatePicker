@@ -27,7 +27,11 @@ class LTYearMonthPicker: UIView {
         super.init(frame: frame)
         backgroundColor = .white
         setupViews()
-        nowDateComonents = NSCalendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: Date())
+        
+        // date: 2022-02-01 00:00:00
+        nowDateComonents = NSCalendar.current.dateComponents([.year, .month], from: Date()) // .day, .hour, .minute, .second
+        date = Calendar.current.date(from: nowDateComonents as DateComponents) ?? Date()
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { [weak self] in
             self?.setupDateData(date: self!.date)
         }
@@ -72,14 +76,14 @@ class LTYearMonthPicker: UIView {
 
     private func setupDateData(date: Date) {
         self.date = date
-        
+
         // --- prepare.
         let calendar = NSCalendar.current
         let compt = calendar.dateComponents([.year, .month, .day], from: Date())
         guard let currentYear = compt.year else {
             return
         }
-        
+
         let selectCompt = calendar.dateComponents([.year, .month, .day], from: date)
         guard let selectYear = selectCompt.year, let selectMonth = selectCompt.month else {
             return
@@ -100,10 +104,9 @@ class LTYearMonthPicker: UIView {
         pickView.reloadAllComponents()
 
         let rowIndexForYear = years.firstIndex(of: selectYear) ?? years.count - 1
+        resetMonthsDataByYearRow(row: rowIndexForYear)
         let rowIndexForMonth = months.firstIndex(of: selectMonth) ?? months.count - 1
 
-        resetMonthsDataByYearRow(row: rowIndexForYear)
-        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             self?.pickView.selectRow(rowIndexForMonth, inComponent: self?.monthComponent ?? 1, animated: true)
             self?.pickView.selectRow(rowIndexForYear, inComponent: self?.yearComponent ?? 0, animated: true)
@@ -189,7 +192,7 @@ extension LTYearMonthPicker: UIPickerViewDataSource, UIPickerViewDelegate {
         }
 
         // now Date
-        var datecomp = NSCalendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        var datecomp = NSCalendar.current.dateComponents([.year, .month], from: date) // , .day, .hour, .minute, .second
         datecomp.year = years[pickerView.selectedRow(inComponent: yearComponent)]
         let monthIndex = pickerView.selectedRow(inComponent: monthComponent)
 
